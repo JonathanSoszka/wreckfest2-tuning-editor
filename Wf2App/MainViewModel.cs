@@ -38,10 +38,19 @@ public sealed class MainViewModel : ObservableObject
     public string? SavePath
     {
         get => _savePath;
-        private set { if (Set(ref _savePath, value)) OnPropertyChanged(nameof(HasSave)); }
+        private set
+        {
+            if (!Set(ref _savePath, value)) return;
+            OnPropertyChanged(nameof(HasSave));
+            OnPropertyChanged(nameof(ShowNoSave));
+            OnPropertyChanged(nameof(ShowEmptyHint));
+        }
     }
 
     public bool HasSave => _savePath is not null;
+
+    /// <summary>No profile is loaded yet — show the first-run "Open a profile" prompt.</summary>
+    public bool ShowNoSave => _savePath is null;
 
     private string _status = "No save loaded.";
     /// <summary>A one-line status shown in the footer.</summary>
@@ -68,8 +77,8 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>A car (but no preset under it) is selected — show the car summary + New preset.</summary>
     public bool ShowCar => _selectedCar is not null && _selectedPreset is null;
 
-    /// <summary>Nothing selected — show the placeholder hint.</summary>
-    public bool ShowEmptyHint => _selectedCar is null && _selectedPreset is null;
+    /// <summary>A save is loaded but nothing is selected — show the "pick a car" hint.</summary>
+    public bool ShowEmptyHint => HasSave && _selectedCar is null && _selectedPreset is null;
 
     private void NotifyDetailState()
     {
@@ -307,6 +316,67 @@ public sealed class MainViewModel : ObservableObject
         Load(_savePath);
         Status = $"Imported {import.Tuning.Count} value(s) into new preset '{newName.Trim()}' on {carName}  ·  " +
                  $"wrote {targets.Count} file(s)  ·  backup: " + (backup is null ? "none" : Path.GetFileName(backup));
+        return new WriteResult(backup, targets, bytes.Length);
+    }
+
+    /// <summary>Export a named preset of the selected car to JSON (a pure file write — no backup needed).</summary>
+    public void ExportPreset(string presetName, string outPath)
+    {
+        if (_save is null) throw new InvalidOperationException("No save loaded.");
+        if (SelectedCar is null) throw new InvalidOperationException("No car selected.");
+        var car = _save.Cars.Find(SelectedCar.Name) ?? throw new InvalidOperationException("Car not found.");
+        var preset = car.Find(presetName) ?? throw new InvalidOperationException($"No preset named '{presetName}'.");
+        File.WriteAllText(outPath, PresetIo.ToJson(PresetIo.Export(car, preset, DateTimeOffset.UtcNow)));
+        Status = $"Exported {car.Name} / {preset.Name} ({preset.Tuning.Count} value(s)) → {Path.GetFileName(outPath)}";
+    }
+
+    /// <summary>
+    /// Rename a preset of the selected car and write through the safe pipeline. Applied to a freshly
+    /// loaded save so a failed write never half-edits the display.
+    /// </summary>
+    /// <param name="force">Write even if the game/Steam is running (the caller must have warned).</param>
+    /// <exception cref="GameRunningException">Game/Steam running and <paramref name="force"/> is false.</exception>
+    public WriteResult RenamePresetOnSelectedCar(string presetName, string newName, bool force = false)
+    {
+        if (_savePath is null) throw new InvalidOperationException("No save loaded.");
+        if (SelectedCar is null) throw new InvalidOperationException("No car selected.");
+        var carName = SelectedCar.Name;
+
+        var fresh = SaveFile.Load(_savePath);
+        fresh.Cars.RenamePreset(carName, presetName, newName);
+        var bytes = fresh.Serialize();
+
+        var targets = _locator.WriteTargetsFor(_savePath);
+        var backup = _writer.WriteAllMirrors(targets, bytes, force: force);
+
+        Load(_savePath);
+        Status = $"Renamed '{presetName}' → '{newName.Trim()}' on {carName}  ·  wrote {targets.Count} file(s)  ·  backup: " +
+                 (backup is null ? "none" : Path.GetFileName(backup));
+        return new WriteResult(backup, targets, bytes.Length);
+    }
+
+    /// <summary>
+    /// Delete a preset from the selected car and write through the safe pipeline. Applied to a freshly
+    /// loaded save so a failed write never half-edits the display.
+    /// </summary>
+    /// <param name="force">Write even if the game/Steam is running (the caller must have warned).</param>
+    /// <exception cref="GameRunningException">Game/Steam running and <paramref name="force"/> is false.</exception>
+    public WriteResult DeletePresetOnSelectedCar(string presetName, bool force = false)
+    {
+        if (_savePath is null) throw new InvalidOperationException("No save loaded.");
+        if (SelectedCar is null) throw new InvalidOperationException("No car selected.");
+        var carName = SelectedCar.Name;
+
+        var fresh = SaveFile.Load(_savePath);
+        fresh.Cars.DeletePreset(carName, presetName);
+        var bytes = fresh.Serialize();
+
+        var targets = _locator.WriteTargetsFor(_savePath);
+        var backup = _writer.WriteAllMirrors(targets, bytes, force: force);
+
+        Load(_savePath);
+        Status = $"Deleted '{presetName}' from {carName}  ·  wrote {targets.Count} file(s)  ·  backup: " +
+                 (backup is null ? "none" : Path.GetFileName(backup));
         return new WriteResult(backup, targets, bytes.Length);
     }
 

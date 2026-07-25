@@ -1,5 +1,6 @@
 using Microsoft.Win32;
 using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
@@ -19,8 +20,18 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = _vm;
+        Title = $"Wreckfest 2 Tuning  ·  v{AppVersion()}";
         _vm.OpenRequested += ShowOpenDialog;
         _vm.TryAutoLoad();
+    }
+
+    /// <summary>The build's version (e.g. "1.1.0"), from the assembly — CI stamps it from the release tag.</summary>
+    private static string AppVersion()
+    {
+        var info = Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        // Informational version may carry build metadata after '+' (e.g. "1.1.0+abc123") — trim it.
+        return (info?.Split('+')[0]) ?? "dev";
     }
 
     private void Settings_Click(object sender, RoutedEventArgs e)
@@ -299,6 +310,82 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "Could not create preset", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    // ---------------------------------------------------------------- preset right-click menu
+
+    /// <summary>The preset a context-menu item was invoked on (the menu inherits the row's DataContext).</summary>
+    private static PresetVm? MenuPreset(object sender) => (sender as FrameworkElement)?.DataContext as PresetVm;
+
+    private void PresetExport_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.SelectedCar is null || MenuPreset(sender) is not { } preset) return;
+
+        var dialog = new SaveFileDialog
+        {
+            Title = "Export tune",
+            Filter = "Tune (*.json)|*.json|All files (*.*)|*.*",
+            FileName = Sanitize($"{_vm.SelectedCar.Name}_{preset.Name}") + ".json",
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        try { _vm.ExportPreset(preset.Name, dialog.FileName); }
+        catch (Exception ex) { MessageBox.Show(this, ex.Message, "Export failed", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private void PresetRename_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.SelectedCar is null || MenuPreset(sender) is not { } preset) return;
+        var carName = _vm.SelectedCar.Name;   // a successful write reloads and clears the selection
+        var oldName = preset.Name;
+
+        var taken = _vm.SelectedCar.Presets.Select(p => p.Name)
+            .Where(n => !string.Equals(n, oldName, StringComparison.OrdinalIgnoreCase))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var prompt = new TextPromptDialog("Rename preset", $"New name for “{oldName}”:", oldName, taken) { Owner = this };
+        if (prompt.ShowDialog() != true) return;
+
+        if (!ConfirmWriteDespiteRunning(out bool force)) return;
+        try
+        {
+            _vm.RenamePresetOnSelectedCar(oldName, prompt.EnteredText, force);
+            RestoreSelection(carName, null);
+        }
+        catch (GameRunningException ex)
+        {
+            MessageBox.Show(this, ex.Message, "Close the game first", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Rename failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void PresetDelete_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.SelectedCar is null || MenuPreset(sender) is not { } preset) return;
+        var carName = _vm.SelectedCar.Name;
+        var name = preset.Name;
+
+        var confirm = MessageBox.Show(this,
+            $"Delete preset “{name}” from {carName}?\n\nThis can't be undone — but a backup of your profile is saved first.",
+            "Delete preset", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        if (!ConfirmWriteDespiteRunning(out bool force)) return;
+        try
+        {
+            _vm.DeletePresetOnSelectedCar(name, force);
+            RestoreSelection(carName, null);
+        }
+        catch (GameRunningException ex)
+        {
+            MessageBox.Show(this, ex.Message, "Close the game first", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Delete failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

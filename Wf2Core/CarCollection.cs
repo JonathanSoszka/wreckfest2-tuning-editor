@@ -425,6 +425,148 @@ public sealed class CarCollection : IReadOnlyList<CarRecord>
     }
 
     /// <summary>
+    /// Delete <paramref name="presetName"/> from <paramref name="carName"/>: remove its whole block
+    /// (name + <c>stvc</c> + <c>atvc</c> + records) from the car's <c>pstv</c> node and decrement the
+    /// preset count. Shrinks the payload; the verified variable-size write path recomputes every length
+    /// and CRC on <see cref="SaveFile.Serialize"/>.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// The car or preset does not exist, it is the car's only preset, it is the preset currently
+    /// selected in-game (deleting it would leave the selection dangling), or its nodes have moved since
+    /// they were parsed.
+    /// </exception>
+    public void DeletePreset(string carName, string presetName)
+    {
+        if (_chunk is null)
+            throw new InvalidOperationException("This save has no cars container to edit.");
+        var car = Find(carName) ?? throw new InvalidOperationException($"No car named '{carName}' in this save.");
+        var preset = car.Find(presetName)
+            ?? throw new InvalidOperationException($"Car '{car.Name}' has no preset named '{presetName}'.");
+
+        if (car.Presets.Count <= 1)
+            throw new InvalidOperationException($"'{car.Name}' has only one preset; a car must keep at least one.");
+        if (string.Equals(car.SelectedPreset, preset.Name, StringComparison.Ordinal))
+            throw new InvalidOperationException(
+                $"'{preset.Name}' is the preset currently equipped on '{car.Name}'. Select a different preset " +
+                "in-game first, then delete this one.");
+
+        int nameLen = Encoding.Latin1.GetByteCount(preset.Name);
+        int blockStart = preset.NameOffset;
+        int stvcStart = preset.ValuesOffset - PresetMarkerSize;
+        int blockEnd = preset.ValuesOffset + 12 + preset.Tuning.Count * RecordSize;
+        if (blockStart < 0 || blockEnd > _payload.Length
+            || ReadU32(_payload, blockStart) != (uint)nameLen
+            || !TagAt(_payload, stvcStart, PresetMarkerTag)
+            || !TagAt(_payload, preset.ValuesOffset, ValuesTag))
+            throw new InvalidOperationException(
+                $"Stale preset '{preset.Name}': its nodes are no longer where they were parsed.");
+
+        int list = FindPresetList(_payload, car.Offset, _payload.Length);
+        if (list < 0)
+            throw new InvalidOperationException($"Could not locate the preset list for '{car.Name}'.");
+        uint count = ReadU32(_payload, list + 8);
+
+        var updated = new byte[_payload.Length - (blockEnd - blockStart)];
+        _payload.AsSpan(0, blockStart).CopyTo(updated);
+        _payload.AsSpan(blockEnd).CopyTo(updated.AsSpan(blockStart));
+        BinaryPrimitives.WriteUInt32LittleEndian(updated.AsSpan(list + 8, 4), count - 1);
+
+        _payload = updated;
+        _chunk.SetDecodedPayload(_payload);
+        _cars = ParseCars(_payload);
+    }
+
+    /// <summary>
+    /// Rename <paramref name="presetName"/> of <paramref name="carName"/> to <paramref name="newName"/>.
+    /// Rewrites the preset's name string in place; if the preset is the one selected in-game, the car's
+    /// trailing "selected" text slot is rewritten too so the selection keeps pointing at it. Both edits
+    /// resize the payload; the verified variable-size write path fixes every length and CRC on save.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// The car or preset does not exist, <paramref name="newName"/> is blank / too long / already used by
+    /// another preset of the car, or the name slots have moved since they were parsed.
+    /// </exception>
+    public void RenamePreset(string carName, string presetName, string newName)
+    {
+        if (_chunk is null)
+            throw new InvalidOperationException("This save has no cars container to edit.");
+        var car = Find(carName) ?? throw new InvalidOperationException($"No car named '{carName}' in this save.");
+        var preset = car.Find(presetName)
+            ?? throw new InvalidOperationException($"Car '{car.Name}' has no preset named '{presetName}'.");
+
+        newName = (newName ?? "").Trim();
+        if (newName.Length == 0)
+            throw new InvalidOperationException("The new preset name cannot be empty.");
+        if (newName.Length > MaxStringLength)
+            throw new InvalidOperationException("The new preset name is too long.");
+        if (string.Equals(newName, preset.Name, StringComparison.Ordinal))
+            return;   // no change
+        if (car.Presets.Any(p => !ReferenceEquals(p, preset) && string.Equals(p.Name, newName, StringComparison.Ordinal)))
+            throw new InvalidOperationException($"Car '{car.Name}' already has a preset named '{newName}'.");
+
+        int oldLen = Encoding.Latin1.GetByteCount(preset.Name);
+        int nameStart = preset.NameOffset;
+        if (nameStart < 0 || nameStart + 4 + oldLen > _payload.Length
+            || ReadU32(_payload, nameStart) != (uint)oldLen)
+            throw new InvalidOperationException(
+                $"Stale preset '{preset.Name}': its name is no longer where it was parsed.");
+
+        byte[] field = MakeStringField(newName);
+        byte[] work = _payload;
+
+        // If this preset is selected, its name is also stored in the car's trailing "selected" slot.
+        // Rewrite that slot first (it sits after the name), so the lower name offset stays valid.
+        if (string.Equals(car.SelectedPreset, preset.Name, StringComparison.Ordinal))
+        {
+            int selStart = LocateSelectedSlot(car);
+            int selOld = Encoding.Latin1.GetByteCount(car.SelectedPreset);
+            if (selStart < 0 || selStart + 4 + selOld > work.Length || ReadU32(work, selStart) != (uint)selOld)
+                throw new InvalidOperationException($"Stale selection slot for '{car.Name}'.");
+            work = ReplaceRange(work, selStart, 4 + selOld, field);
+        }
+        work = ReplaceRange(work, nameStart, 4 + oldLen, field);
+
+        _payload = work;
+        _chunk.SetDecodedPayload(_payload);
+        _cars = ParseCars(_payload);
+    }
+
+    /// <summary>A length-prefixed Latin-1 text field: <c>[u32 len][bytes]</c>.</summary>
+    private static byte[] MakeStringField(string s)
+    {
+        byte[] b = Encoding.Latin1.GetBytes(s);
+        var field = new byte[4 + b.Length];
+        BinaryPrimitives.WriteUInt32LittleEndian(field.AsSpan(0, 4), (uint)b.Length);
+        b.CopyTo(field.AsSpan(4));
+        return field;
+    }
+
+    /// <summary>Return a copy of <paramref name="src"/> with <paramref name="oldLen"/> bytes at
+    /// <paramref name="start"/> replaced by <paramref name="repl"/>.</summary>
+    private static byte[] ReplaceRange(byte[] src, int start, int oldLen, byte[] repl)
+    {
+        var dst = new byte[src.Length - oldLen + repl.Length];
+        src.AsSpan(0, start).CopyTo(dst);
+        repl.CopyTo(dst, start);
+        src.AsSpan(start + oldLen).CopyTo(dst.AsSpan(start + repl.Length));
+        return dst;
+    }
+
+    /// <summary>
+    /// Offset of the length prefix of the car's trailing "selected preset" text slot — after the last
+    /// preset block, the reserved word, and the sourceId string (matching <see cref="ParseCar"/>).
+    /// </summary>
+    private int LocateSelectedSlot(CarRecord car)
+    {
+        int afterLast = car.Presets.Max(p => p.ValuesOffset + 12 + p.Tuning.Count * RecordSize);
+        int q = afterLast + 4;   // reserved word
+        if (q + 4 > _payload.Length) return -1;
+        uint idLen = ReadU32(_payload, q);
+        int sel = q + 4 + (int)idLen;
+        return sel + 4 <= _payload.Length ? sel : -1;
+    }
+
+    /// <summary>
     /// Validate a preset-insert request (car exists, name is non-blank/unique, cap not hit) and locate
     /// the car's <c>pstv</c> node. Returns the car, the node offset, and the trimmed name.
     /// </summary>

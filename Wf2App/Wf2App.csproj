@@ -10,6 +10,14 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <!-- Default for local builds; CI overrides -p:Version from the release tag. -->
+    <Version>1.2.0</Version>
+    <ApplicationIcon>appicon.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Also embedded as a WPF resource so Window.Icon (title bar + taskbar) can use it. -->
+    <Resource Include="appicon.ico" />
+  </ItemGroup>
 
 </Project>

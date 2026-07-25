@@ -6,6 +6,8 @@
         xmlns:local="clr-namespace:Wf2App"
         mc:Ignorable="d"
         Title="Wreckfest 2 Tuning" Height="620" Width="960"
+        Icon="appicon.ico"
+        WindowStartupLocation="CenterScreen"
         Background="{StaticResource Bg}" Foreground="{StaticResource Ink}"
         FontFamily="{DynamicResource AppFontFamily}" FontSize="{DynamicResource AppFontSize}"
         UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
@@ -73,8 +75,19 @@
 
             <!-- Detail: selected preset's values -->
             <Grid Grid.Column="2" Background="{StaticResource Bg}" Margin="14,12">
-                <!-- Empty state -->
-                <TextBlock Text="Select a car or preset in the tree."
+                <!-- First run: no profile loaded -->
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Visibility="{Binding ShowNoSave, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="No profile loaded" FontSize="16" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="Open your Wreckfest 2 profile.sgfi to get started."
+                               Foreground="{StaticResource Muted}" Margin="0,4,0,12" HorizontalAlignment="Center" />
+                    <Button Content="Open…" Command="{Binding OpenCommand}" Style="{StaticResource AccentButton}"
+                            Padding="16,6" MinWidth="110" HorizontalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Save loaded, nothing selected -->
+                <TextBlock Text="Select a car to see its presets."
                            Foreground="{StaticResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"
                            Visibility="{Binding ShowEmptyHint, Converter={StaticResource BoolToVis}}" />
 
@@ -106,7 +119,16 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type local:PresetVm}">
                                         <Button Style="{StaticResource RowButton}" Click="PresetRow_Click"
-                                                ToolTip="View this preset's tuning">
+                                                ToolTip="View this preset's tuning — right-click for more">
+                                            <Button.ContextMenu>
+                                                <ContextMenu DataContext="{Binding PlacementTarget.DataContext,
+                                                                                   RelativeSource={RelativeSource Self}}">
+                                                    <MenuItem Header="Export…" Click="PresetExport_Click" />
+                                                    <MenuItem Header="Rename…" Click="PresetRename_Click" />
+                                                    <Separator />
+                                                    <MenuItem Header="Delete…" Click="PresetDelete_Click" />
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock Text="●" FontSize="9" VerticalAlignment="Center" Margin="0,0,6,0"
                                                            Foreground="{StaticResource Accent}" ToolTip="Selected in-game"
