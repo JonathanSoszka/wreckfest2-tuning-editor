@@ -125,9 +125,9 @@
                     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
                         <Grid>
                             <StackPanel>
-                                <Button Click="Back_Click" Style="{StaticResource LinkButton}" Margin="0,0,0,3"
+                                <Button Click="Back_Click" Style="{StaticResource BackButton}" Margin="0,0,0,8"
                                         ToolTip="Back to this car's presets"
-                                        Content="{Binding SelectedCar.Name, StringFormat='‹ {0}'}" />
+                                        Content="{Binding SelectedCar.Name, StringFormat='←  Back to {0}'}" />
                                 <TextBlock Text="{Binding SelectedPreset.Name}" FontSize="19" FontWeight="SemiBold" />
                                 <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
                                     <TextBlock Text="{Binding SelectedCar.Name}" Foreground="{StaticResource Muted}" />
