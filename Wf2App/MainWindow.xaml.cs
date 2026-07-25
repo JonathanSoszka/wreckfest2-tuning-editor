@@ -47,27 +47,18 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// The tree holds cars and presets. <see cref="TreeView.SelectedItem"/> is read-only and not
-    /// bindable, so we translate the selection into the view-model here: selecting a preset fills the
-    /// detail pane and records its owning car; selecting a car just notes the car.
+    /// The tree lists cars only. <see cref="TreeView.SelectedItem"/> is read-only and not bindable, so
+    /// we translate the selection into the view-model here: selecting a car shows its preset pane.
+    /// Presets themselves are chosen in that pane (see <see cref="PresetRow_Click"/>).
     /// </summary>
     private void Tree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
-        switch (e.NewValue)
+        if (e.NewValue is CarVm car)
         {
-            case PresetVm preset:
-                _vm.SelectedCar = OwningCar(preset);
-                _vm.SelectedPreset = preset;
-                break;
-            case CarVm car:
-                _vm.SelectedCar = car;
-                _vm.SelectedPreset = null;
-                break;
+            _vm.SelectedCar = car;
+            _vm.SelectedPreset = null;
         }
     }
-
-    private CarVm? OwningCar(PresetVm preset) =>
-        _vm.Cars.FirstOrDefault(c => c.Presets.Contains(preset));
 
     /// <summary>Clicking a preset row in the car pane selects it — the detail switches to its tuning.</summary>
     private void PresetRow_Click(object sender, RoutedEventArgs e)
@@ -77,9 +68,10 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// After a write reloads the save (which clears the tree's selection), re-select a car/preset by
-    /// name — so the user stays where they were instead of being dropped to the empty pane. Selecting
-    /// the tree item drives the view-model through <see cref="Tree_SelectedItemChanged"/>.
+    /// After a write reloads the save (which clears the tree's selection), re-select a car by name —
+    /// so the user stays where they were instead of being dropped to the empty pane. When a preset
+    /// name is given, land on that preset in the car pane too (the tree lists cars only, so the preset
+    /// is driven straight through the view-model).
     /// </summary>
     private void RestoreSelection(string carName, string? presetName)
     {
@@ -87,29 +79,23 @@ public partial class MainWindow : Window
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
         {
             var carVm = _vm.Cars.FirstOrDefault(c => c.Name == carName);
-            if (carVm is null || Tree.ItemContainerGenerator.ContainerFromItem(carVm) is not TreeViewItem carItem)
-                return;
+            if (carVm is null) return;
 
-            if (presetName is null)
+            // Selecting the car container fires Tree_SelectedItemChanged (SelectedCar=carVm,
+            // SelectedPreset=null); fall back to setting the car directly if it isn't realized yet.
+            if (Tree.ItemContainerGenerator.ContainerFromItem(carVm) is TreeViewItem carItem)
             {
                 carItem.IsSelected = true;
                 carItem.BringIntoView();
-                return;
-            }
-
-            carItem.IsExpanded = true;
-            carItem.UpdateLayout();   // realize the child preset containers
-            var presetVm = carVm.Presets.FirstOrDefault(p => p.Name == presetName);
-            if (presetVm is not null &&
-                carItem.ItemContainerGenerator.ContainerFromItem(presetVm) is TreeViewItem presetItem)
-            {
-                presetItem.IsSelected = true;
-                presetItem.BringIntoView();
             }
             else
             {
-                carItem.IsSelected = true;   // fallback: at least land on the car
+                _vm.SelectedCar = carVm;
+                _vm.SelectedPreset = null;
             }
+
+            if (presetName is not null)
+                _vm.SelectedPreset = carVm.Presets.FirstOrDefault(p => p.Name == presetName);
         }));
     }
 

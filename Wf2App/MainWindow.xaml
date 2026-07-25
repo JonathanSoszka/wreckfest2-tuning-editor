@@ -53,7 +53,9 @@
                       ItemsSource="{Binding Cars}"
                       SelectedItemChanged="Tree_SelectedItemChanged">
                 <TreeView.Resources>
-                    <HierarchicalDataTemplate DataType="{x:Type local:CarVm}" ItemsSource="{Binding Presets}">
+                    <!-- Cars only. Presets are chosen in the car pane on the right, so the tree
+                         does not expand into them (that duplication was redundant). -->
+                    <DataTemplate DataType="{x:Type local:CarVm}">
                         <StackPanel>
                             <Border Height="1" Background="{StaticResource Line}" Margin="-20,5,4,5"
                                     Visibility="{Binding HasDividerAbove, Converter={StaticResource BoolToVis}}" />
@@ -61,16 +63,6 @@
                                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
                                 <TextBlock Text="{Binding Config, StringFormat=' [{0}]'}" Foreground="{StaticResource Muted}" />
                             </StackPanel>
-                        </StackPanel>
-                    </HierarchicalDataTemplate>
-                    <DataTemplate DataType="{x:Type local:PresetVm}">
-                        <StackPanel Orientation="Horizontal" Margin="0,1">
-                            <TextBlock Text="●" FontSize="9" VerticalAlignment="Center" Margin="0,0,5,0"
-                                       Foreground="{StaticResource Accent}" ToolTip="Selected in-game"
-                                       Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}}" />
-                            <TextBlock Text="{Binding Name}" />
-                            <TextBlock Text="{Binding ValueCount, StringFormat=' ({0})'}"
-                                       FontFamily="Consolas" Foreground="{StaticResource Muted}" />
                         </StackPanel>
                     </DataTemplate>
                 </TreeView.Resources>
