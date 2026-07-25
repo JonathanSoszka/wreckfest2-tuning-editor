@@ -1,3 +1,5 @@
+using System.Linq;
+
 namespace Wf2Core;
 
 /// <summary>
@@ -42,6 +44,10 @@ public static class TuningSchema
     };
 
     private static TuningParameter A(float min, float max, uint steps) => new("armt", min, max, steps);
+
+    /// <summary>Every parameter index with an exact schema — i.e. everything that can be edited on a
+    /// slider, whether or not the preset currently stores it. Ascending order.</summary>
+    public static IReadOnlyList<uint> EditableIndices { get; } = Map.Keys.OrderBy(k => k).ToArray();
 
     /// <summary>The exact schema for <paramref name="paramIndex"/>, or null when it is unknown or relative.</summary>
     public static TuningParameter? For(uint paramIndex) =>

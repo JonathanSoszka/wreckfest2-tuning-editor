@@ -122,12 +122,16 @@ public sealed class MainViewModel : ObservableObject
         private set => Set(ref _editables, value);
     }
 
-    /// <summary>True when at least one parameter of the selected preset can be edited.</summary>
-    public bool CanEdit => _save is not null && SelectedCar is not null && SelectedPreset is not null
-        && (_save.Cars.Find(SelectedCar.Name)?.Find(SelectedPreset.Name)?.Tuning
-            .Any(t => TuningSchema.For(t.ParamIndex) is not null) ?? false);
+    /// <summary>True when a preset is selected — every preset can be edited, since any editable
+    /// parameter can be set even if the preset currently leaves it at its default.</summary>
+    public bool CanEdit => _save is not null && SelectedCar is not null && SelectedPreset is not null;
 
-    /// <summary>Enter edit mode: build editable rows from the selected preset's stored records.</summary>
+    /// <summary>
+    /// Enter edit mode. Builds a row for <b>every</b> editable parameter (whether or not the preset
+    /// stores it) plus any stored parameter that has no editable schema (shown read-only for context),
+    /// ordered by parameter index. Stored parameters start at their stored position; the rest start at
+    /// their default and are only written if the user moves them.
+    /// </summary>
     public void BeginEdit()
     {
         if (_save is null || SelectedCar is null || SelectedPreset is null) return;
@@ -137,7 +141,16 @@ public sealed class MainViewModel : ObservableObject
 
         _editCar = car.Name;
         _editPreset = preset.Name;
-        Editables = preset.Tuning.Select(t => new EditableValueVm(t)).ToList();
+
+        var stored = preset.Tuning.ToDictionary(t => t.ParamIndex);
+        var indices = TuningSchema.EditableIndices
+            .Concat(preset.Tuning.Select(t => t.ParamIndex))   // include stored relative/unknown params
+            .Distinct()
+            .OrderBy(i => i);
+        Editables = indices.Select(i =>
+            stored.TryGetValue(i, out var rec)
+                ? new EditableValueVm(rec)
+                : new EditableValueVm(i, TuningSchema.For(i)!)).ToList();
         IsEditing = true;
     }
 
@@ -165,7 +178,14 @@ public sealed class MainViewModel : ObservableObject
         var dirty = _editables.Where(e => e.IsDirty).ToList();
         var fresh = SaveFile.Load(_savePath);
         foreach (var e in dirty)
-            fresh.Cars.SetTuningValue(_editCar, _editPreset, e.ParamIndex, e.CurrentAux, e.Value);
+        {
+            // A parameter the preset already stored is overwritten in place; one that was at its default
+            // gets a new record added (the game omits defaults, so this is how we bring it off default).
+            if (e.WasStored)
+                fresh.Cars.SetTuningValue(_editCar, _editPreset, e.ParamIndex, e.CurrentAux, e.Value);
+            else
+                fresh.Cars.AddTuningValue(_editCar, _editPreset, e.ParamIndex, e.CurrentAux, e.Value);
+        }
         var bytes = fresh.Serialize();
 
         var targets = _locator.WriteTargetsFor(_savePath);
@@ -224,42 +244,7 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    // ---------------------------------------------------------------- G2: export & copy
-
-    /// <summary>
-    /// Export the currently-selected preset to a JSON file. A pure file write — it does not touch
-    /// the save, so it needs no backup or game-running check.
-    /// </summary>
-    public void ExportSelectedPreset(string outPath)
-    {
-        var (car, preset) = ResolveSelected();
-        File.WriteAllText(outPath, PresetIo.ToJson(PresetIo.Export(car, preset, DateTimeOffset.UtcNow)));
-        Status = $"Exported {car.Name} / {preset.Name} ({preset.Tuning.Count} value(s)) → {Path.GetFileName(outPath)}";
-    }
-
-    /// <summary>
-    /// Duplicate the selected preset under <paramref name="newName"/> and write through the safe
-    /// pipeline. Applied to a freshly-loaded save so a failed write never half-edits the display.
-    /// </summary>
-    /// <param name="force">Write even if the game/Steam is running (the caller must have warned).</param>
-    /// <exception cref="GameRunningException">Game/Steam running and <paramref name="force"/> is false.</exception>
-    public WriteResult DuplicateSelectedPreset(string newName, bool force = false)
-    {
-        if (_savePath is null) throw new InvalidOperationException("No save loaded.");
-        var (car, preset) = ResolveSelected();
-
-        var fresh = SaveFile.Load(_savePath);
-        fresh.Cars.DuplicatePreset(car.Name, preset.Name, newName);
-        var bytes = fresh.Serialize();
-
-        var targets = _locator.WriteTargetsFor(_savePath);
-        var backup = _writer.WriteAllMirrors(targets, bytes, force: force);
-
-        Load(_savePath);
-        Status = $"Duplicated {car.Name} / {preset.Name} → '{newName.Trim()}'  ·  wrote {targets.Count} file(s)  ·  backup: " +
-                 (backup is null ? "none" : Path.GetFileName(backup));
-        return new WriteResult(backup, targets, bytes.Length);
-    }
+    // ---------------------------------------------------------------- G2: export, duplicate, rename, delete
 
     /// <summary>
     /// Create a new empty preset (all sliders at default) on the selected car and write through the
@@ -316,6 +301,32 @@ public sealed class MainViewModel : ObservableObject
         Load(_savePath);
         Status = $"Imported {import.Tuning.Count} value(s) into new preset '{newName.Trim()}' on {carName}  ·  " +
                  $"wrote {targets.Count} file(s)  ·  backup: " + (backup is null ? "none" : Path.GetFileName(backup));
+        return new WriteResult(backup, targets, bytes.Length);
+    }
+
+    /// <summary>
+    /// Duplicate a named preset of the selected car under <paramref name="newName"/> and write through
+    /// the safe pipeline, applied to a freshly-loaded save so a failed write never half-edits the
+    /// display. Targets any preset by name (used by both the detail view and the right-click menu).
+    /// </summary>
+    /// <param name="force">Write even if the game/Steam is running (the caller must have warned).</param>
+    /// <exception cref="GameRunningException">Game/Steam running and <paramref name="force"/> is false.</exception>
+    public WriteResult DuplicatePresetOnSelectedCar(string presetName, string newName, bool force = false)
+    {
+        if (_savePath is null) throw new InvalidOperationException("No save loaded.");
+        if (SelectedCar is null) throw new InvalidOperationException("No car selected.");
+        var carName = SelectedCar.Name;
+
+        var fresh = SaveFile.Load(_savePath);
+        fresh.Cars.DuplicatePreset(carName, presetName, newName);
+        var bytes = fresh.Serialize();
+
+        var targets = _locator.WriteTargetsFor(_savePath);
+        var backup = _writer.WriteAllMirrors(targets, bytes, force: force);
+
+        Load(_savePath);
+        Status = $"Duplicated {carName} / {presetName} → '{newName.Trim()}'  ·  wrote {targets.Count} file(s)  ·  backup: " +
+                 (backup is null ? "none" : Path.GetFileName(backup));
         return new WriteResult(backup, targets, bytes.Length);
     }
 
@@ -378,18 +389,6 @@ public sealed class MainViewModel : ObservableObject
         Status = $"Deleted '{presetName}' from {carName}  ·  wrote {targets.Count} file(s)  ·  backup: " +
                  (backup is null ? "none" : Path.GetFileName(backup));
         return new WriteResult(backup, targets, bytes.Length);
-    }
-
-    private (CarRecord car, TuningPreset preset) ResolveSelected()
-    {
-        if (_save is null) throw new InvalidOperationException("No save loaded.");
-        if (SelectedCar is null || SelectedPreset is null)
-            throw new InvalidOperationException("No preset selected.");
-        var car = _save.Cars.Find(SelectedCar.Name)
-            ?? throw new InvalidOperationException($"No car named '{SelectedCar.Name}'.");
-        var preset = car.Find(SelectedPreset.Name)
-            ?? throw new InvalidOperationException($"Car '{car.Name}' has no preset '{SelectedPreset.Name}'.");
-        return (car, preset);
     }
 
     private void Reload()

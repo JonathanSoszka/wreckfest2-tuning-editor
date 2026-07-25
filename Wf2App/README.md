@@ -23,8 +23,9 @@ can find one; otherwise use **Open…**.
 
 - `Mvvm.cs` — `ObservableObject` + `RelayCommand`. No MVVM toolkit; the app is small (plan §6).
 - `SaveViewModels.cs` — `CarVm` / `PresetVm` / `ValueRowVm`: read-only projections of `Wf2Core` types.
-- `MainViewModel.cs` — loads a `SaveFile`, exposes `Cars`, the tree selection, status, and the write
-  actions (`ExportSelectedPreset`, `PlanCopy`, `PlanImport`, `ApplyPlan`, `DuplicateSelectedPreset`).
+- `MainViewModel.cs` — loads a `SaveFile`, exposes `Cars`, the tree selection, status, and the per-preset
+  write actions (`ExportPreset`, `DuplicatePresetOnSelectedCar`, `RenamePresetOnSelectedCar`,
+  `DeletePresetOnSelectedCar`, `CreatePresetOnSelectedCar`, `CreateFromImport`, `SaveEdits`).
 - `TextPromptDialog.xaml(.cs)` — a small validated name prompt (G5 duplicate naming).
 - `WindowsSteam.cs` — Windows-registry Steam path, fed to `Wf2Core.SaveLocator` (which is
   cross-platform and does the rest of the save/mirror/game-install discovery).

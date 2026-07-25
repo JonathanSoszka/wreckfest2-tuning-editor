@@ -123,6 +123,8 @@
                                             <Button.ContextMenu>
                                                 <ContextMenu DataContext="{Binding PlacementTarget.DataContext,
                                                                                    RelativeSource={RelativeSource Self}}">
+                                                    <MenuItem Header="Edit" Click="PresetEdit_Click" />
+                                                    <MenuItem Header="Duplicate…" Click="PresetDuplicate_Click" />
                                                     <MenuItem Header="Export…" Click="PresetExport_Click" />
                                                     <MenuItem Header="Rename…" Click="PresetRename_Click" />
                                                     <Separator />
@@ -165,8 +167,10 @@
                                 <Button Content="Edit" Click="Edit_Click" Style="{StaticResource AccentButton}"
                                         Padding="14,4" MinWidth="70" IsEnabled="{Binding CanEdit}"
                                         ToolTip="Adjust this preset's values with sliders" />
-                                <Button Content="Duplicate…" Click="Duplicate_Click" Padding="12,4" MinWidth="90" Margin="6,0,0,0" />
-                                <Button Content="Export…" Click="Export_Click" Padding="12,4" MinWidth="80" Margin="6,0,0,0" />
+                                <Button Content="Duplicate…" Click="Duplicate_Click" Padding="12,4" MinWidth="86" Margin="6,0,0,0" />
+                                <Button Content="Export…" Click="Export_Click" Padding="12,4" MinWidth="76" Margin="6,0,0,0" />
+                                <Button Content="Rename…" Click="Rename_Click" Padding="12,4" MinWidth="80" Margin="6,0,0,0" />
+                                <Button Content="Delete…" Click="Delete_Click" Padding="12,4" MinWidth="76" Margin="6,0,0,0" />
                             </StackPanel>
 
                             <!-- Edit-mode actions -->
@@ -284,6 +288,12 @@
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding IsEditable}" Value="False">
                                                                 <Setter Property="Foreground" Value="{StaticResource Muted}" />
+                                                            </DataTrigger>
+                                                            <!-- Unstored parameter still at its default: muted "default" text -->
+                                                            <DataTrigger Binding="{Binding AtDefault}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource Muted}" />
+                                                                <Setter Property="FontWeight" Value="Normal" />
+                                                                <Setter Property="FontStyle" Value="Italic" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
