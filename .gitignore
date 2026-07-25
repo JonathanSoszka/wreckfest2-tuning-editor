@@ -1,0 +1,20 @@
+# .NET build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+
+# VS / Rider
+.vs/
+.idea/
+*.suo
+
+# Publish output
+publish/
+
+# memscan scratch (now written to %TEMP%; guard against older builds)
+memscan.candidates
+
+# Local, user-specific Claude Code settings
+.claude/settings.local.json
