@@ -13,8 +13,9 @@ using Wf2Core;
 //   tuning <tuningDir>          decode every .ctms — the legal min/max per tunable parameter
 //   guides <vehicleDir> <outDir>  export car names/descriptions + part catalog to JSON
 //   scrub <in.sgfi> <out.sgfi>  anonymize a save for sharing (blank online/ghost source ids)
+//   schema [out.json]  emit the editable-parameter schema (the source of truth for the TS export lib)
 
-const string Usage = "usage: wf2 <info|cars|parts|preset|settune|roundtrip|hexdiff|decompress|catalog|tuning|guides|scrub> <args>";
+const string Usage = "usage: wf2 <info|cars|parts|preset|settune|roundtrip|hexdiff|decompress|catalog|tuning|guides|scrub|schema> <args>";
 
 if (args.Length == 0)
 {
@@ -53,6 +54,8 @@ try
             return Bbag(args[1], args.Length == 3 ? args[2] : null);
         case "scrub" when args.Length == 3:
             return Scrub(args[1], args[2]);
+        case "schema" when args.Length is 1 or 2:
+            return Schema(args.Length == 2 ? args[1] : null);
         case "guides" when args.Length == 3:
             return Guides(args[1], args[2]);
         default:
@@ -148,14 +151,49 @@ static int Preset(string[] a)
             return PresetDuplicate(a[1], a[2], a[3], a[4], a[5]);
         case "create" when a.Length == 5:
             return PresetCreate(a[1], a[2], a[3], a[4]);
+        case "validate" when a.Length is 2 or 4:
+            return PresetValidate(a[1], a.Length == 4 ? a[2] : null, a.Length == 4 ? a[3] : null);
         default:
             Console.Error.WriteLine("usage: wf2 preset export <save> <car> <preset> <out.json>");
             Console.Error.WriteLine("       wf2 preset export-all <save> <outDir>");
             Console.Error.WriteLine("       wf2 preset import <save> <out.sgfi> <car> <preset> <in.json> [--dry-run] [--allow-grow]");
             Console.Error.WriteLine("       wf2 preset duplicate <save> <out.sgfi> <car> <preset> <newName>");
             Console.Error.WriteLine("       wf2 preset create <save> <out.sgfi> <car> <newName>");
+            Console.Error.WriteLine("       wf2 preset validate <in.json> [<save.sgfi> <car>]");
             return 2;
     }
+}
+
+// preset validate <in.json> [<save.sgfi> <car>]  — parse a preset the same way the app's import does
+// (FromJson: version, finite values, no duplicate params) and, when a save + car are given, print the
+// plan and any warnings PlanNewPreset would raise. The cross-language check for the TS export library.
+static int PresetValidate(string jsonPath, string? savePath, string? carName)
+{
+    PresetExport import;
+    try
+    {
+        import = PresetIo.FromJson(File.ReadAllText(jsonPath));
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"REJECTED: {ex.Message}");
+        return 1;
+    }
+
+    Console.WriteLine($"OK: format v{import.FormatVersion}, {import.Tuning.Count} value(s), " +
+                      $"source '{import.Source.Car}' / '{import.Source.Preset}'.");
+
+    if (savePath is not null && carName is not null)
+    {
+        var save = SaveFile.Load(savePath);
+        var plan = PresetIo.PlanNewPreset(save, carName, import);
+        Console.WriteLine($"plan onto '{carName}': {plan.Added.Count} value(s) would be added.");
+        foreach (var w in plan.Warnings) Console.WriteLine($"  warn: {w}");
+        foreach (var r in plan.RangeWarnings)
+            Console.WriteLine($"  range: {r.Name} = {r.Value} outside {r.Min}..{r.Max} " +
+                              $"({(r.IsExact ? "exact limit" : "observed")})");
+    }
+    return 0;
 }
 
 static int PresetCreate(string inPath, string outPath, string carName, string newName)
@@ -442,6 +480,57 @@ static int Scrub(string inPath, string outPath)
 
     save.Save(outPath);
     Console.WriteLine($"scrubbed {hits} chunk(s) -> {outPath}");
+    return 0;
+}
+
+// schema [out.json]  — emit the editable-parameter schema as JSON: the single source of truth the
+// TypeScript export library generates from. Combines TuningSchema (min/max/steps, the aux→value
+// arithmetic) with ParamMap (name + display units) for every editable parameter, plus the current
+// preset format version. Prints to stdout, or writes to out.json when a path is given.
+static int Schema(string? outPath)
+{
+    var opts = new System.Text.Json.JsonSerializerOptions
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+    };
+
+    var parameters = TuningSchema.EditableIndices.Select(i =>
+    {
+        var s = TuningSchema.For(i)!;              // present by definition of EditableIndices
+        var info = ParamMap.Lookup(i);
+        return new
+        {
+            index = i,
+            name = info?.Name ?? $"parameter {i}",
+            min = s.Min,
+            max = s.Max,
+            steps = s.Steps,
+            storedUnit = info?.StoredUnit ?? "",
+            displayUnit = info?.DisplayUnit ?? "",
+            displayFactor = info?.DisplayFactor ?? 1.0,
+            confirmed = info?.Confirmed ?? false,
+        };
+    }).ToList();
+
+    var doc = new
+    {
+        formatVersion = PresetIo.CurrentFormatVersion,
+        generatedBy = "wf2 schema",
+        note = "value = min + aux * (max - min) / steps, computed in float32. aux is an integer 0..steps.",
+        @params = parameters,
+    };
+
+    string json = System.Text.Json.JsonSerializer.Serialize(doc, opts);
+    if (outPath is not null)
+    {
+        File.WriteAllText(outPath, json);
+        Console.WriteLine($"wrote {parameters.Count} parameters -> {outPath}");
+    }
+    else
+    {
+        Console.WriteLine(json);
+    }
     return 0;
 }
 

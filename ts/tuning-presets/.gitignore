@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# Generated from schema/wf2-schema.json by `npm run gen`
+src/schema.generated.ts

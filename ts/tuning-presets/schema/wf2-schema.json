@@ -1,0 +1,238 @@
+{
+  "formatVersion": 1,
+  "generatedBy": "wf2 schema",
+  "note": "value = min \u002B aux * (max - min) / steps, computed in float32. aux is an integer 0..steps.",
+  "params": [
+    {
+      "index": 0,
+      "name": "Braking Balance",
+      "min": 0,
+      "max": 1,
+      "steps": 100,
+      "storedUnit": "",
+      "displayUnit": "",
+      "displayFactor": 100,
+      "confirmed": true
+    },
+    {
+      "index": 1,
+      "name": "Braking Pressure",
+      "min": 50,
+      "max": 150,
+      "steps": 20,
+      "storedUnit": "",
+      "displayUnit": "",
+      "displayFactor": 1,
+      "confirmed": true
+    },
+    {
+      "index": 3,
+      "name": "Front Differential - power",
+      "min": 0,
+      "max": 1,
+      "steps": 20,
+      "storedUnit": "",
+      "displayUnit": "",
+      "displayFactor": 100,
+      "confirmed": false
+    },
+    {
+      "index": 4,
+      "name": "Front Differential - preload",
+      "min": 5,
+      "max": 150,
+      "steps": 29,
+      "storedUnit": "",
+      "displayUnit": "",
+      "displayFactor": 1,
+      "confirmed": false
+    },
+    {
+      "index": 14,
+      "name": "Differential - power",
+      "min": 0,
+      "max": 1,
+      "steps": 20,
+      "storedUnit": "",
+      "displayUnit": "",
+      "displayFactor": 100,
+      "confirmed": true
+    },
+    {
+      "index": 15,
+      "name": "Differential - coast",
+      "min": 0,
+      "max": 1,
+      "steps": 20,
+      "storedUnit": "",
+      "displayUnit": "",
+      "displayFactor": 100,
+      "confirmed": true
+    },
+    {
+      "index": 16,
+      "name": "Differential - preload",
+      "min": 5,
+      "max": 150,
+      "steps": 29,
+      "storedUnit": "",
+      "displayUnit": "",
+      "displayFactor": 1,
+      "confirmed": true
+    },
+    {
+      "index": 25,
+      "name": "Anti-roll bar - front",
+      "min": 0,
+      "max": 100000,
+      "steps": 40,
+      "storedUnit": "N/m",
+      "displayUnit": "kN/m",
+      "displayFactor": 0.001,
+      "confirmed": true
+    },
+    {
+      "index": 26,
+      "name": "Front Camber",
+      "min": -5,
+      "max": 2,
+      "steps": 28,
+      "storedUnit": "deg",
+      "displayUnit": "deg",
+      "displayFactor": 1,
+      "confirmed": true
+    },
+    {
+      "index": 27,
+      "name": "Front Toe",
+      "min": -2,
+      "max": 2,
+      "steps": 80,
+      "storedUnit": "deg",
+      "displayUnit": "deg",
+      "displayFactor": 1,
+      "confirmed": true
+    },
+    {
+      "index": 33,
+      "name": "Anti-roll bar - rear",
+      "min": 0,
+      "max": 100000,
+      "steps": 40,
+      "storedUnit": "N/m",
+      "displayUnit": "kN/m",
+      "displayFactor": 0.001,
+      "confirmed": true
+    },
+    {
+      "index": 34,
+      "name": "Rear Camber",
+      "min": -5,
+      "max": 2,
+      "steps": 28,
+      "storedUnit": "deg",
+      "displayUnit": "deg",
+      "displayFactor": 1,
+      "confirmed": false
+    },
+    {
+      "index": 35,
+      "name": "Rear Toe",
+      "min": -2,
+      "max": 2,
+      "steps": 80,
+      "storedUnit": "deg",
+      "displayUnit": "deg",
+      "displayFactor": 1,
+      "confirmed": true
+    },
+    {
+      "index": 40,
+      "name": "Gearbox - final drive",
+      "min": 2.2,
+      "max": 6.1,
+      "steps": 39,
+      "storedUnit": "",
+      "displayUnit": "",
+      "displayFactor": 1,
+      "confirmed": true
+    },
+    {
+      "index": 41,
+      "name": "Gearbox - gear 1",
+      "min": 0.48,
+      "max": 6,
+      "steps": 100,
+      "storedUnit": "",
+      "displayUnit": "",
+      "displayFactor": 1,
+      "confirmed": true
+    },
+    {
+      "index": 42,
+      "name": "Gearbox - gear 2",
+      "min": 0.48,
+      "max": 6,
+      "steps": 100,
+      "storedUnit": "",
+      "displayUnit": "",
+      "displayFactor": 1,
+      "confirmed": true
+    },
+    {
+      "index": 43,
+      "name": "Gearbox - gear 3",
+      "min": 0.48,
+      "max": 6,
+      "steps": 100,
+      "storedUnit": "",
+      "displayUnit": "",
+      "displayFactor": 1,
+      "confirmed": true
+    },
+    {
+      "index": 44,
+      "name": "Gearbox - gear 4",
+      "min": 0.48,
+      "max": 6,
+      "steps": 100,
+      "storedUnit": "",
+      "displayUnit": "",
+      "displayFactor": 1,
+      "confirmed": true
+    },
+    {
+      "index": 45,
+      "name": "Gearbox - gear 5",
+      "min": 0.48,
+      "max": 6,
+      "steps": 100,
+      "storedUnit": "",
+      "displayUnit": "",
+      "displayFactor": 1,
+      "confirmed": true
+    },
+    {
+      "index": 46,
+      "name": "Gearbox - gear 6",
+      "min": 0.48,
+      "max": 6,
+      "steps": 100,
+      "storedUnit": "",
+      "displayUnit": "",
+      "displayFactor": 1,
+      "confirmed": true
+    },
+    {
+      "index": 55,
+      "name": "Ackerman",
+      "min": 0,
+      "max": 100,
+      "steps": 20,
+      "storedUnit": "",
+      "displayUnit": "%",
+      "displayFactor": 1,
+      "confirmed": true
+    }
+  ]
+}
