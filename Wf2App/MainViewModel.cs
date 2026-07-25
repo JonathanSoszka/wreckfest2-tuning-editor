@@ -18,8 +18,8 @@ public sealed class MainViewModel : ObservableObject
     private readonly SaveLocator _locator = SaveLocator.ForCurrentMachine(WindowsSteam.Roots());
     private SaveFile? _save;
 
-    /// <summary>Whether the game or Steam is running — a write-time hazard the user is warned about.</summary>
-    public bool IsGameOrSteamRunning => _writer.IsGameOrSteamRunning();
+    /// <summary>Whether the game is running — a write-time hazard the user is warned about.</summary>
+    public bool IsGameRunning => _writer.IsGameRunning();
 
     /// <summary>Where timestamped backups are written before every save.</summary>
     public string BackupDir => SaveWriter.DefaultBackupDir;
@@ -168,8 +168,8 @@ public sealed class MainViewModel : ObservableObject
     /// Write every changed value (Tier 1, in place) through the safe pipeline, then leave edit mode.
     /// Applied to a freshly-loaded save so a failed write never half-edits the display.
     /// </summary>
-    /// <param name="force">Write even if the game/Steam is running (the caller must have warned).</param>
-    /// <exception cref="GameRunningException">Game/Steam running and <paramref name="force"/> is false.</exception>
+    /// <param name="force">Write even if the game is running (the caller must have warned).</param>
+    /// <exception cref="GameRunningException">Game running and <paramref name="force"/> is false.</exception>
     public WriteResult SaveEdits(bool force = false)
     {
         if (_savePath is null || _editCar is null || _editPreset is null)
@@ -250,8 +250,8 @@ public sealed class MainViewModel : ObservableObject
     /// Create a new empty preset (all sliders at default) on the selected car and write through the
     /// safe pipeline. Applied to a freshly-loaded save so a failed write never half-edits the display.
     /// </summary>
-    /// <param name="force">Write even if the game/Steam is running (the caller must have warned).</param>
-    /// <exception cref="GameRunningException">Game/Steam running and <paramref name="force"/> is false.</exception>
+    /// <param name="force">Write even if the game is running (the caller must have warned).</param>
+    /// <exception cref="GameRunningException">Game running and <paramref name="force"/> is false.</exception>
     public WriteResult CreatePresetOnSelectedCar(string newName, bool force = false)
     {
         if (_savePath is null) throw new InvalidOperationException("No save loaded.");
@@ -283,8 +283,8 @@ public sealed class MainViewModel : ObservableObject
     /// through the safe pipeline. Applied to a freshly-loaded save so a failed write never half-edits
     /// the display.
     /// </summary>
-    /// <param name="force">Write even if the game/Steam is running (the caller must have warned).</param>
-    /// <exception cref="GameRunningException">Game/Steam running and <paramref name="force"/> is false.</exception>
+    /// <param name="force">Write even if the game is running (the caller must have warned).</param>
+    /// <exception cref="GameRunningException">Game running and <paramref name="force"/> is false.</exception>
     public WriteResult CreateFromImport(string carName, string newName, PresetExport import, bool force = false)
     {
         if (_savePath is null) throw new InvalidOperationException("No save loaded.");
@@ -309,8 +309,8 @@ public sealed class MainViewModel : ObservableObject
     /// the safe pipeline, applied to a freshly-loaded save so a failed write never half-edits the
     /// display. Targets any preset by name (used by both the detail view and the right-click menu).
     /// </summary>
-    /// <param name="force">Write even if the game/Steam is running (the caller must have warned).</param>
-    /// <exception cref="GameRunningException">Game/Steam running and <paramref name="force"/> is false.</exception>
+    /// <param name="force">Write even if the game is running (the caller must have warned).</param>
+    /// <exception cref="GameRunningException">Game running and <paramref name="force"/> is false.</exception>
     public WriteResult DuplicatePresetOnSelectedCar(string presetName, string newName, bool force = false)
     {
         if (_savePath is null) throw new InvalidOperationException("No save loaded.");
@@ -345,8 +345,8 @@ public sealed class MainViewModel : ObservableObject
     /// Rename a preset of the selected car and write through the safe pipeline. Applied to a freshly
     /// loaded save so a failed write never half-edits the display.
     /// </summary>
-    /// <param name="force">Write even if the game/Steam is running (the caller must have warned).</param>
-    /// <exception cref="GameRunningException">Game/Steam running and <paramref name="force"/> is false.</exception>
+    /// <param name="force">Write even if the game is running (the caller must have warned).</param>
+    /// <exception cref="GameRunningException">Game running and <paramref name="force"/> is false.</exception>
     public WriteResult RenamePresetOnSelectedCar(string presetName, string newName, bool force = false)
     {
         if (_savePath is null) throw new InvalidOperationException("No save loaded.");
@@ -370,8 +370,8 @@ public sealed class MainViewModel : ObservableObject
     /// Delete a preset from the selected car and write through the safe pipeline. Applied to a freshly
     /// loaded save so a failed write never half-edits the display.
     /// </summary>
-    /// <param name="force">Write even if the game/Steam is running (the caller must have warned).</param>
-    /// <exception cref="GameRunningException">Game/Steam running and <paramref name="force"/> is false.</exception>
+    /// <param name="force">Write even if the game is running (the caller must have warned).</param>
+    /// <exception cref="GameRunningException">Game running and <paramref name="force"/> is false.</exception>
     public WriteResult DeletePresetOnSelectedCar(string presetName, bool force = false)
     {
         if (_savePath is null) throw new InvalidOperationException("No save loaded.");

@@ -5,7 +5,7 @@ public class SafeWriteTests
 {
     private sealed class FakeSystemState(bool running) : ISystemState
     {
-        public bool IsGameOrSteamRunning() => running;
+        public bool IsGameRunning() => running;
     }
 
     [Fact]

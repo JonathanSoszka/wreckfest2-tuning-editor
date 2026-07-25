@@ -11,7 +11,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <!-- Default for local builds; CI overrides -p:Version from the release tag. -->
-    <Version>1.3.0</Version>
+    <Version>1.3.1</Version>
     <ApplicationIcon>appicon.ico</ApplicationIcon>
   </PropertyGroup>
 

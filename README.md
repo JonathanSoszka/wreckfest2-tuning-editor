@@ -25,8 +25,9 @@ anyway*). The app finds your profile automatically.
 
 ## Safety — please read once
 
-- **Close Wreckfest 2 before saving.** Never write to the live profile while the game is running;
-  the app warns you if it detects the game or Steam running.
+- **Close Wreckfest 2 before saving.** Never write to the live profile while the game is running
+  (it can overwrite your change from memory on its next save); the app warns you if it's running.
+  Steam itself running is fine.
 - **Your profile is backed up automatically** before each write, to
   `Documents\Wreckfest2 Backups\`. If anything ever looks wrong in-game, restore the most recent
   backup.

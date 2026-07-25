@@ -323,7 +323,7 @@ public partial class MainWindow : Window
             MessageBox.Show(this,
                 $"Created preset '{newName}'.\n\nWrote {result.Bytes} bytes to {result.Targets.Count} file(s).\n\nBackup: {backup}",
                 "Duplicated", MessageBoxButton.OK, MessageBoxImage.Information);
-            RestoreSelection(carName, newName);
+            RestoreSelection(carName, null);   // stay on the car's preset list; don't open the new copy
         }
         catch (GameRunningException ex)
         {
@@ -401,21 +401,21 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Writing while the game or Steam runs is risky — the game can overwrite the file on its next
-    /// save and Steam Cloud can re-sync a stale copy. Warn and let the user proceed at their own risk.
-    /// Returns false if the user cancelled; otherwise <paramref name="force"/> says whether to override.
+    /// Writing while the game runs is risky — it can overwrite the file from memory on its next save.
+    /// Warn and let the user proceed at their own risk. (Steam running is fine.) Returns false if the
+    /// user cancelled; otherwise <paramref name="force"/> says whether to override.
     /// </summary>
     private bool ConfirmWriteDespiteRunning(out bool force)
     {
         force = false;
-        if (!_vm.IsGameOrSteamRunning) return true;
+        if (!_vm.IsGameRunning) return true;
 
         var choice = MessageBox.Show(this,
-            "Wreckfest 2 or Steam is running.\n\n" +
-            "Writing now is risky: the game can overwrite this change on its next save, and " +
-            "Steam Cloud can re-sync an older copy back over it. Closing both first is safest.\n\n" +
+            "Wreckfest 2 is running.\n\n" +
+            "Writing now is risky: the game can overwrite this change on its next save. " +
+            "Closing the game first is safest.\n\n" +
             "A timestamped backup is taken either way. Write anyway?",
-            "Game or Steam is running", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+            "Game is running", MessageBoxButton.YesNo, MessageBoxImage.Warning,
             MessageBoxResult.No);
         if (choice != MessageBoxResult.Yes) return false;
         force = true;

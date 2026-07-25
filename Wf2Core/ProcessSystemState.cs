@@ -2,28 +2,24 @@ using System.Diagnostics;
 
 namespace Wf2Core;
 
-/// <summary>Real <see cref="ISystemState"/>: reports whether Wreckfest 2 or Steam is running.</summary>
+/// <summary>Real <see cref="ISystemState"/>: reports whether Wreckfest 2 is running.</summary>
 public sealed class ProcessSystemState : ISystemState
 {
-    // Process names (without ".exe"). The game executable is "Wreckfest2"; Steam's client is "steam".
-    private static readonly string[] BlockingProcessNames = ["Wreckfest2", "steam"];
+    // Process name (without ".exe"). The game executable is "Wreckfest2". Steam running is fine —
+    // only the game actively overwrites the live save from memory.
+    private const string GameProcessName = "Wreckfest2";
 
-    public bool IsGameOrSteamRunning()
+    public bool IsGameRunning()
     {
-        foreach (var name in BlockingProcessNames)
+        Process[] procs = Process.GetProcessesByName(GameProcessName);
+        try
         {
-            Process[] procs = Process.GetProcessesByName(name);
-            try
-            {
-                if (procs.Length > 0)
-                    return true;
-            }
-            finally
-            {
-                foreach (var p in procs)
-                    p.Dispose();
-            }
+            return procs.Length > 0;
         }
-        return false;
+        finally
+        {
+            foreach (var p in procs)
+                p.Dispose();
+        }
     }
 }

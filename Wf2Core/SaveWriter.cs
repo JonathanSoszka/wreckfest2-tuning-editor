@@ -2,7 +2,7 @@ namespace Wf2Core;
 
 /// <summary>
 /// Safe-write pipeline for the live save (Milestone A.2 / AGENTS.md safety rules):
-///   1. Refuse to write while the game or Steam is running.
+///   1. Refuse to write while the game is running.
 ///   2. Back up the existing target (timestamped) before overwriting.
 ///   3. Only then write the new bytes.
 /// The backup step is skippable only when there is no existing file to back up.
@@ -18,7 +18,7 @@ public sealed class SaveWriter(ISystemState systemState)
 
     /// <summary>
     /// Write <paramref name="bytes"/> to <paramref name="targetPath"/> through the safe pipeline.
-    /// Throws <see cref="GameRunningException"/> (writing nothing) if the game/Steam is running.
+    /// Throws <see cref="GameRunningException"/> (writing nothing) if the game is running.
     /// Returns the path of the backup that was created, or <c>null</c> if the target did not yet exist.
     /// </summary>
     public string? Write(string targetPath, byte[] bytes, string? backupDir = null, DateTime? timestampUtc = null)
@@ -42,11 +42,10 @@ public sealed class SaveWriter(ISystemState systemState)
     /// The first target is treated as authoritative for the backup; the rest are its cloud mirror(s)
     /// and are assumed to hold the same bytes.</para>
     ///
-    /// <para>By default throws <see cref="GameRunningException"/> — writing nothing — if the game or
-    /// Steam is running. Pass <paramref name="force"/> to write anyway; the caller is then responsible
-    /// for having warned the user, since the game can overwrite the file on its next save and Steam
-    /// Cloud can re-sync a stale copy. Returns the backup path, or <c>null</c> when the first target
-    /// did not yet exist.</para>
+    /// <para>By default throws <see cref="GameRunningException"/> — writing nothing — if the game is
+    /// running. Pass <paramref name="force"/> to write anyway; the caller is then responsible for having
+    /// warned the user, since the game can overwrite the file on its next save. Returns the backup path,
+    /// or <c>null</c> when the first target did not yet exist.</para>
     /// </summary>
     public string? WriteAllMirrors(IReadOnlyList<string> targets, byte[] bytes,
                                    string? backupDir = null, DateTime? timestampUtc = null,
@@ -64,15 +63,14 @@ public sealed class SaveWriter(ISystemState systemState)
         return backupPath;
     }
 
-    /// <summary>Whether Wreckfest 2 or Steam is currently running — the write-time hazard.</summary>
-    public bool IsGameOrSteamRunning() => _systemState.IsGameOrSteamRunning();
+    /// <summary>Whether Wreckfest 2 is currently running — the write-time hazard.</summary>
+    public bool IsGameRunning() => _systemState.IsGameRunning();
 
     private void GuardGameNotRunning()
     {
-        if (_systemState.IsGameOrSteamRunning())
+        if (_systemState.IsGameRunning())
             throw new GameRunningException(
-                "Refusing to write the save while Wreckfest 2 or Steam is running. " +
-                "Close both (Steam fully, not just the game) and retry.");
+                "Refusing to write the save while Wreckfest 2 is running. Close the game and retry.");
     }
 
     /// <summary>Copy the target aside to a timestamped backup, or return null if it does not exist.</summary>
@@ -95,5 +93,5 @@ public sealed class SaveWriter(ISystemState systemState)
     }
 }
 
-/// <summary>Thrown when a write is attempted while the game or Steam is running.</summary>
+/// <summary>Thrown when a write is attempted while the game is running.</summary>
 public sealed class GameRunningException(string message) : Exception(message);

@@ -6,6 +6,6 @@ namespace Wf2Core;
 /// </summary>
 public interface ISystemState
 {
-    /// <summary>True if Wreckfest 2 or Steam is running — writing the live save now risks a cloud conflict.</summary>
-    bool IsGameOrSteamRunning();
+    /// <summary>True if Wreckfest 2 is running — writing the live save now risks the game overwriting it.</summary>
+    bool IsGameRunning();
 }
