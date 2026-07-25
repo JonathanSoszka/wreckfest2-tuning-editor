@@ -10,13 +10,11 @@ itself couldn't. It's an unofficial community tool, not affiliated with Bugbear 
 ## What it does
 
 - Browse every car in your profile and each car's tuning presets.
-- Edit tuning values with sliders that snap to the game's own legal steps (in-range by construction).
-- **Create** a fresh preset (game defaults), **duplicate** an existing one, and **export** a preset
-  to a `.json` file.
-- **Import** a preset from a `.json` file as a new preset on any car, with a warning if any value
-  falls outside what the game normally produces.
-- Writes safely: it backs up your profile first and updates both copies the game reads.
-
+- Edit tuning values with sliders that snap to the game's own legal steps.
+- **Create** a fresh preset (game defaults)
+= **duplicate** existing presets
+- **Import & Export** presets from a `.json` file
+- **Writes safely** by backing up your profile before any
 ## Download & run
 
 1. Grab `Wf2App.exe` from the [latest release](../../releases/latest).
