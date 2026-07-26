@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Wf2App"
         mc:Ignorable="d"
-        Title="Wreckfest 2 Tuning" Height="620" Width="960"
+        Title="Wreckfest 2 Tuning" Height="640" Width="1080" MinWidth="720" MinHeight="420"
         Icon="appicon.ico"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource Bg}" Foreground="{StaticResource Ink}"
@@ -42,28 +42,35 @@
             </DockPanel>
         </Border>
 
+        <!-- Three cascading panes: cars → that car's presets → the selected preset's tuning.
+             Widths are weighted so the detail pane (the widest content) gets the most room; the two
+             navigation panes collapse while editing to hand their space to the sliders. -->
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="320" MinWidth="220" />
+                <ColumnDefinition x:Name="CarsColumn" Width="196" MinWidth="70" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" MinWidth="320" />
+                <ColumnDefinition x:Name="PresetsColumn" Width="232" MinWidth="90" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" MinWidth="330" />
             </Grid.ColumnDefinitions>
 
-            <!-- Cars / presets tree -->
+            <!-- Pane 1: cars -->
             <TreeView x:Name="Tree" Grid.Column="0" BorderThickness="0" Padding="6"
                       Background="{StaticResource Tree}" Foreground="{StaticResource Ink}"
                       ItemsSource="{Binding Cars}"
                       SelectedItemChanged="Tree_SelectedItemChanged">
                 <TreeView.Resources>
-                    <!-- Cars only. Presets are chosen in the car pane on the right, so the tree
-                         does not expand into them (that duplication was redundant). -->
                     <DataTemplate DataType="{x:Type local:CarVm}">
                         <StackPanel>
                             <Border Height="1" Background="{StaticResource Line}" Margin="-20,5,4,5"
                                     Visibility="{Binding HasDividerAbove, Converter={StaticResource BoolToVis}}" />
-                            <StackPanel Orientation="Horizontal" Margin="0,1">
-                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                                <TextBlock Text="{Binding Config, StringFormat=' [{0}]'}" Foreground="{StaticResource Muted}" />
+                            <StackPanel Margin="0,1">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding Config}" Foreground="{StaticResource Muted}" FontSize="11"
+                                           TextTrimming="CharacterEllipsis"
+                                           Visibility="{Binding DataContext.ShowCarConfig,
+                                                                RelativeSource={RelativeSource AncestorType=Window},
+                                                                Converter={StaticResource BoolToVis}}" />
                             </StackPanel>
                         </StackPanel>
                     </DataTemplate>
@@ -73,47 +80,30 @@
             <GridSplitter Grid.Column="1" Width="3" HorizontalAlignment="Center"
                           VerticalAlignment="Stretch" Background="{StaticResource Line}" />
 
-            <!-- Detail: selected preset's values -->
-            <Grid Grid.Column="2" Background="{StaticResource Bg}" Margin="14,12">
-                <!-- First run: no profile loaded -->
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
-                            Visibility="{Binding ShowNoSave, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="No profile loaded" FontSize="16" FontWeight="SemiBold"
-                               HorizontalAlignment="Center" />
-                    <TextBlock Text="Open your Wreckfest 2 profile.sgfi to get started."
-                               Foreground="{StaticResource Muted}" Margin="0,4,0,12" HorizontalAlignment="Center" />
-                    <Button Content="Open…" Command="{Binding OpenCommand}" Style="{StaticResource AccentButton}"
-                            Padding="16,6" MinWidth="110" HorizontalAlignment="Center" />
-                </StackPanel>
-
-                <!-- Save loaded, nothing selected -->
-                <TextBlock Text="Select a car to see its presets."
+            <!-- Pane 2: the selected car's presets -->
+            <Grid Grid.Column="2" Background="{StaticResource Tree}">
+                <TextBlock Text="Select a car" TextWrapping="Wrap" TextAlignment="Center" Margin="12"
                            Foreground="{StaticResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"
-                           Visibility="{Binding ShowEmptyHint, Converter={StaticResource BoolToVis}}" />
+                           Visibility="{Binding ShowPickCar, Converter={StaticResource BoolToVis}}" />
 
-                <!-- Car selected (no preset): summary, its presets, and create a new preset -->
-                <DockPanel Visibility="{Binding ShowCar, Converter={StaticResource BoolToVis}}">
-                    <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
-                        <StackPanel>
-                            <TextBlock Text="{Binding SelectedCar.Name}" FontSize="19" FontWeight="SemiBold" />
-                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                <TextBlock Text="{Binding SelectedCar.Config}" Foreground="{StaticResource Muted}" />
-                                <TextBlock Text="{Binding SelectedCar.Presets.Count, StringFormat=' · {0} preset(s)'}"
-                                           Foreground="{StaticResource Muted}" />
-                            </StackPanel>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-                            <Button Content="Import…" Click="ImportNew_Click" Padding="12,5" MinWidth="80" />
-                            <Button Content="New preset…" Click="NewPreset_Click" Style="{StaticResource AccentButton}"
-                                    Padding="14,5" Margin="6,0,0,0" />
-                        </StackPanel>
-                    </Grid>
+                <DockPanel Visibility="{Binding HasSelectedCar, Converter={StaticResource BoolToVis}}" Margin="10,10,10,10">
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                        <TextBlock Text="{Binding SelectedCar.Name}" FontSize="15" FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Foreground="{StaticResource Muted}" FontSize="11" TextTrimming="CharacterEllipsis"
+                                   Text="{Binding SelectedCar.Presets.Count, StringFormat='{}{0} preset(s)'}" />
+                    </StackPanel>
 
-                    <TextBlock DockPanel.Dock="Top" Text="PRESETS" FontSize="11" FontWeight="Bold"
-                               Foreground="{StaticResource Muted}" Margin="0,0,0,4" />
+                    <!-- Add actions sit at the foot of the list they affect -->
+                    <UniformGrid DockPanel.Dock="Bottom" Columns="2" Rows="1" Margin="0,8,0,0">
+                        <Button Content="Import…" Click="ImportNew_Click" Padding="6,5" Margin="0,0,3,0"
+                                ToolTip="Import a tune file as a new preset on this car" />
+                        <Button Content="New…" Click="NewPreset_Click" Style="{StaticResource AccentButton}"
+                                Padding="6,5" Margin="3,0,0,0" ToolTip="Create a preset with every slider at its default" />
+                    </UniformGrid>
 
                     <Border BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="6"
-                            Background="{StaticResource Tree}">
+                            Background="{StaticResource Bg}">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <ItemsControl ItemsSource="{Binding SelectedCar.Presets}" Margin="3">
                                 <ItemsControl.ItemTemplate>
@@ -144,18 +134,48 @@
                         </ScrollViewer>
                     </Border>
                 </DockPanel>
+            </Grid>
+
+            <GridSplitter Grid.Column="3" Width="3" HorizontalAlignment="Center"
+                          VerticalAlignment="Stretch" Background="{StaticResource Line}" />
+
+            <!-- Pane 3: the selected preset's values -->
+            <Grid Grid.Column="4" Background="{StaticResource Bg}" Margin="14,12">
+                <!-- First run: no profile loaded -->
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Visibility="{Binding ShowNoSave, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="No profile loaded" FontSize="16" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="Open your Wreckfest 2 profile.sgfi to get started."
+                               Foreground="{StaticResource Muted}" Margin="0,4,0,12" HorizontalAlignment="Center" />
+                    <Button Content="Open…" Command="{Binding OpenCommand}" Style="{StaticResource AccentButton}"
+                            Padding="16,6" MinWidth="110" HorizontalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Save loaded, no car chosen yet -->
+                <TextBlock Text="Select a car to see its presets."
+                           Foreground="{StaticResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Visibility="{Binding ShowEmptyHint, Converter={StaticResource BoolToVis}}" />
+
+                <!-- Car chosen, no preset yet -->
+                <TextBlock Text="Select a preset to see its tuning."
+                           Foreground="{StaticResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Visibility="{Binding ShowPickPreset, Converter={StaticResource BoolToVis}}" />
 
                 <DockPanel Visibility="{Binding HasSelectedPreset, Converter={StaticResource BoolToVis}}">
                     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
                         <Grid>
                             <StackPanel>
-                                <Button Click="Back_Click" Style="{StaticResource BackButton}" Margin="0,0,0,8"
-                                        ToolTip="Back to this car's presets"
-                                        Content="{Binding SelectedCar.Name, StringFormat='←  Back to {0}'}" />
-                                <TextBlock Text="{Binding SelectedPreset.Name}" FontSize="19" FontWeight="SemiBold" />
+                                <!-- Breadcrumb, not a back button: both parent panes stay on screen. -->
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                    <TextBlock Text="{Binding SelectedCar.Name}" Foreground="{StaticResource Muted}" FontSize="11" />
+                                    <TextBlock Text=" › " Foreground="{StaticResource Line}" FontSize="11" />
+                                    <TextBlock Text="{Binding SelectedCar.Config}" Foreground="{StaticResource Muted}" FontSize="11" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding SelectedPreset.Name}" FontSize="19" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" />
                                 <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                    <TextBlock Text="{Binding SelectedCar.Name}" Foreground="{StaticResource Muted}" />
-                                    <TextBlock Text="{Binding SelectedPreset.ValueCount, StringFormat=' · {0} stored value(s)'}"
+                                    <TextBlock Text="{Binding SelectedPreset.ValueCount, StringFormat='{}{0} stored value(s)'}"
                                                Foreground="{StaticResource Muted}" />
                                     <TextBlock Text=" · selected in-game" Foreground="{StaticResource Accent}"
                                                Visibility="{Binding SelectedPreset.IsActive, Converter={StaticResource BoolToVis}}" />
@@ -167,10 +187,18 @@
                                 <Button Content="Edit" Click="Edit_Click" Style="{StaticResource AccentButton}"
                                         Padding="14,4" MinWidth="70" IsEnabled="{Binding CanEdit}"
                                         ToolTip="Adjust this preset's values with sliders" />
-                                <Button Content="Duplicate…" Click="Duplicate_Click" Padding="12,4" MinWidth="86" Margin="6,0,0,0" />
-                                <Button Content="Export…" Click="Export_Click" Padding="12,4" MinWidth="76" Margin="6,0,0,0" />
-                                <Button Content="Rename…" Click="Rename_Click" Padding="12,4" MinWidth="80" Margin="6,0,0,0" />
-                                <Button Content="Delete…" Click="Delete_Click" Padding="12,4" MinWidth="76" Margin="6,0,0,0" />
+                                <Button Content="More  ▾" Click="MoreMenu_Click" Padding="12,4" MinWidth="82" Margin="6,0,0,0"
+                                        ToolTip="Duplicate, export, rename or delete this preset">
+                                    <Button.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Duplicate…" Click="Duplicate_Click" />
+                                            <MenuItem Header="Export…" Click="Export_Click" />
+                                            <MenuItem Header="Rename…" Click="Rename_Click" />
+                                            <Separator />
+                                            <MenuItem Header="Delete…" Click="Delete_Click" />
+                                        </ContextMenu>
+                                    </Button.ContextMenu>
+                                </Button>
                             </StackPanel>
 
                             <!-- Edit-mode actions -->

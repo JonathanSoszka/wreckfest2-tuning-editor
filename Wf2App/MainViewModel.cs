@@ -44,6 +44,8 @@ public sealed class MainViewModel : ObservableObject
             OnPropertyChanged(nameof(HasSave));
             OnPropertyChanged(nameof(ShowNoSave));
             OnPropertyChanged(nameof(ShowEmptyHint));
+            OnPropertyChanged(nameof(ShowPickCar));
+            OnPropertyChanged(nameof(ShowPickPreset));
         }
     }
 
@@ -71,20 +73,34 @@ public sealed class MainViewModel : ObservableObject
         set { if (Set(ref _selectedPreset, value)) NotifyDetailState(); }
     }
 
-    /// <summary>A preset is selected — show its tuning grid.</summary>
+    /// <summary>A preset is selected — show its tuning in the third pane.</summary>
     public bool HasSelectedPreset => _selectedPreset is not null;
 
-    /// <summary>A car (but no preset under it) is selected — show the car summary + New preset.</summary>
-    public bool ShowCar => _selectedCar is not null && _selectedPreset is null;
+    /// <summary>A car is selected — the presets pane lists its presets (whether or not one is open).</summary>
+    public bool HasSelectedCar => _selectedCar is not null;
+
+    /// <summary>A save is loaded but no car is chosen — the presets pane shows its own hint.</summary>
+    public bool ShowPickCar => HasSave && _selectedCar is null;
+
+    /// <summary>A car is chosen but no preset — the detail pane invites picking one.</summary>
+    public bool ShowPickPreset => HasSave && _selectedCar is not null && _selectedPreset is null;
 
     /// <summary>A save is loaded but nothing is selected — show the "pick a car" hint.</summary>
     public bool ShowEmptyHint => HasSave && _selectedCar is null && _selectedPreset is null;
+
+    /// <summary>
+    /// Whether the cars pane has room for each car's config line. Hidden while editing, when the
+    /// navigation panes collapse to give the sliders their width.
+    /// </summary>
+    public bool ShowCarConfig => !IsEditing;
 
     private void NotifyDetailState()
     {
         IsEditing = false;   // changing the selection leaves edit mode
         OnPropertyChanged(nameof(HasSelectedPreset));
-        OnPropertyChanged(nameof(ShowCar));
+        OnPropertyChanged(nameof(HasSelectedCar));
+        OnPropertyChanged(nameof(ShowPickCar));
+        OnPropertyChanged(nameof(ShowPickPreset));
         OnPropertyChanged(nameof(ShowEmptyHint));
         OnPropertyChanged(nameof(ViewingPreset));
         OnPropertyChanged(nameof(EditingPreset));
@@ -105,6 +121,7 @@ public sealed class MainViewModel : ObservableObject
             if (!Set(ref _isEditing, value)) return;
             OnPropertyChanged(nameof(ViewingPreset));
             OnPropertyChanged(nameof(EditingPreset));
+            OnPropertyChanged(nameof(ShowCarConfig));
         }
     }
 

@@ -16,13 +16,42 @@ public partial class MainWindow : Window
 {
     private readonly MainViewModel _vm = new();
 
+    // Browsing widths of the two navigation panes, restored when edit mode ends.
+    private GridLength _carsWidth, _presetsWidth;
+
     public MainWindow()
     {
         InitializeComponent();
         DataContext = _vm;
         Title = $"Wreckfest 2 Tuning  ·  v{AppVersion()}";
+        _carsWidth = CarsColumn.Width;
+        _presetsWidth = PresetsColumn.Width;
+        _vm.PropertyChanged += Vm_PropertyChanged;
         _vm.OpenRequested += ShowOpenDialog;
         _vm.TryAutoLoad();
+    }
+
+    /// <summary>
+    /// The slider editor is the widest thing in the app, so entering edit mode collapses the two
+    /// navigation panes to narrow rails and hands their width to the sliders. Leaving edit mode
+    /// restores whatever widths the user had (including any they dragged).
+    /// </summary>
+    private void Vm_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(MainViewModel.IsEditing)) return;
+
+        if (_vm.IsEditing)
+        {
+            _carsWidth = CarsColumn.Width;
+            _presetsWidth = PresetsColumn.Width;
+            CarsColumn.Width = new GridLength(92);
+            PresetsColumn.Width = new GridLength(126);
+        }
+        else
+        {
+            CarsColumn.Width = _carsWidth;
+            PresetsColumn.Width = _presetsWidth;
+        }
     }
 
     /// <summary>The build's version (e.g. "1.1.0"), from the assembly — CI stamps it from the release tag.</summary>
@@ -144,18 +173,6 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>Back link on the preset view — return to the car's preset selection.</summary>
-    private void Back_Click(object sender, RoutedEventArgs e)
-    {
-        var car = _vm.SelectedCar;
-        if (car is null) return;
-        // Show the car pane immediately. This works whether the user reached the preset via the tree
-        // (tree has the preset selected) or via a car-pane row (tree still has the car selected — so
-        // re-selecting the car fires no event and cannot clear the preset on its own).
-        _vm.SelectedPreset = null;
-        RestoreSelection(car.Name, null);   // keep the tree highlight on the car
-    }
-
     /// <summary>Import a tune file as a NEW preset on the selected car (never overwrites an existing one).</summary>
     private void ImportNew_Click(object sender, RoutedEventArgs e)
     {
@@ -274,6 +291,17 @@ public partial class MainWindow : Window
     private void Export_Click(object sender, RoutedEventArgs e) => DoExportPreset(_vm.SelectedPreset);
     private void Rename_Click(object sender, RoutedEventArgs e) => DoRenamePreset(_vm.SelectedPreset);
     private void Delete_Click(object sender, RoutedEventArgs e) => DoDeletePreset(_vm.SelectedPreset);
+
+    /// <summary>Open the "More" button's dropdown (its attached context menu) below the button.</summary>
+    private void MoreMenu_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { ContextMenu: { } menu } button)
+        {
+            menu.PlacementTarget = button;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            menu.IsOpen = true;
+        }
+    }
 
     /// <summary>
     /// Open a preset in the slider editor. Selects it first (a no-op if already open), then enters edit
