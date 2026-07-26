@@ -54,6 +54,29 @@ dotnet publish Wf2App -c Release -r win-x64 --self-contained true `
   -p:EnableCompressionInSingleFile=true
 ```
 
+## Publishing tuning presets
+
+Building a site or tool that shares tuning suggestions people can load into the app? The
+[`@wreckfest/tuning-presets`](ts/tuning-presets/README.md) TypeScript library (in
+[`ts/tuning-presets/`](ts/tuning-presets)) constructs the `.json` files this app imports:
+
+```ts
+import { PresetBuilder } from "@wreckfest/tuning-presets";
+
+const json = new PresetBuilder({ car: "Rocket", carConfig: "car03:default", preset: "Dirt — beginner" })
+  .setDisplay("brakingBalance", 55)   // the number the game's UI shows
+  .setDisplay("frontCamber", -1.5)    // degrees
+  .set("gearboxFinalDrive", { aux: 21 })
+  .toJson();                          // ready for the app's "Import from file"
+```
+
+It covers the 21 tunable parameters that have an exact schema; springs, dampers and ride height are
+`setRaw`-only for now. Every value is kept on the game's legal steps, so output always imports.
+
+The library's schema is generated from this app so the two can't drift — `wf2 schema` emits the
+source of truth and `wf2 preset validate` checks that library output imports cleanly. See the
+[library README](ts/tuning-presets/README.md) for the API and the sync workflow.
+
 ## License
 
 [MIT](LICENSE) © 2026 Jonathan Soszka.
